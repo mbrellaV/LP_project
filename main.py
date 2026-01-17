@@ -12,6 +12,7 @@ def solve(lp):
 
     for i, cons in enumerate(lp.constraints):
         b[i] = cons['rhs']
+
         for j, coef in cons['coefficients'].items():
             A[i, j] = coef
 
@@ -25,20 +26,22 @@ def solve(lp):
         y = np_solve(B.T, c[basis])
         r = c - A.T @ y
 
-        entering = -1
+        k = -1
 
         for j in range(n):
             if j not in basis and r[j] < -tolerance:
-                entering = j
+                k = j
                 break
 
-        if entering == -1:
+        if k == -1:
             x = np.zeros(n)
+
             for i, j in enumerate(basis):
                 x[j] = x_B[i]
+
             return {"primal": x.tolist(), "dual": y.tolist()}
 
-        d = np_solve(B, A[:, entering])
+        d = np_solve(B, A[:, k])
 
         theta, l = np.inf, -1
 
@@ -46,6 +49,15 @@ def solve(lp):
             if d[i] > tolerance and x_B[i] / d[i] < theta:
                 theta, l = x_B[i] / d[i], i
 
-        basis[l] = entering
+        if l == -1:
+            ray = np.zeros(n)
+            ray[k] = 1
+
+            for i, j in enumerate(basis):
+                ray[j] = -d[i]
+
+            return {"status": "unbounded", "ray": ray.tolist()}
+
+        basis[l] = k
 
     return {"status": "error"}
